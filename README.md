@@ -4,7 +4,7 @@
 * [greasyfork](https://greasyfork.org/zh-CN/scripts/418957-blivemedal)
 * [NGA帖子](https://bbs.nga.cn/read.php?tid=24755662)
 
-![截图1](https://github.com/xfgryujk/bliveproxy/blob/master/screenshots/1.png)
+![截图1](https://github.com/xfgryujk/blivemedal/blob/master/screenshots/1.png)
 
 ## 特性
 * 把原来的丑B勋章按钮改好看了
