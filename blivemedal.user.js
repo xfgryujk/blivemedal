@@ -105,7 +105,7 @@
   let MedalDialog = {
     name: 'MedalDialog',
     template: `
-      <el-dialog :visible.sync="dialogVisible" title="我的粉丝勋章" width="850px" :modal="false">
+      <el-dialog :visible.sync="dialogVisible" title="我的粉丝勋章" top="60px" width="850px" :modal="false">
         <el-table :data="sortedMedals" stripe height="70vh">
           <el-table-column label="勋章" prop="medal_name" width="100" sortable
             :sort-method="(a, b) => a.medal_name.localeCompare(b.medal_name)"
@@ -137,7 +137,7 @@
           <el-table-column label="操作" width="120">
             <template slot-scope="scope">
               <el-button v-if="curMedal !== null && scope.row.medal_id === curMedal.medal_id"
-                type="primary" size="mini" @click="takeOffMedal"
+                type="info" size="mini" @click="takeOffMedal"
               >取消佩戴</el-button>
               <el-button v-else type="primary" size="mini" @click="wearMedal(scope.row)">佩戴</el-button>
             </template>
@@ -154,13 +154,14 @@
     },
     computed: {
       sortedMedals() {
+        const CUR_ROOM_ID = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info.room_id
         let curMedal = []
         let curRoomMedal = []
         let medals = []
         for (let medal of this.medals) {
           if (this.curMedal !== null && medal.medal_id === this.curMedal.medal_id) {
             curMedal.push(medal)
-          } else if (medal.roomid === window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info.room_id) {
+          } else if (medal.roomid === CUR_ROOM_ID) {
             curRoomMedal.push(medal)
           } else {
             medals.push(medal)
@@ -168,7 +169,6 @@
         }
         // 剩下的按上次佩戴时间降序排序
         medals.sort((a, b) => b.last_wear_time - a.last_wear_time)
-        console.log(curMedal, curRoomMedal, medals)
         return [...curMedal, ...curRoomMedal, ...medals]
       }
     },
@@ -179,53 +179,22 @@
         this.dialogVisible = true
       },
       async updateMedals() {
-        let rsp
         try {
-          rsp = (await axios.get('http://api.live.bilibili.com/fans_medal/v5/live_fans_medal/iApiMedal?page=1&pageSize=1000', {
-            withCredentials: true
-          })).data
-          if (rsp.code !== 0) {
-            throw rsp.message
-          }
+          this.medals = await getMedals()
         } catch (e) {
           this.$message.error(e)
-          return
         }
-        this.medals = rsp.data.fansMedalList
       },
       async updateCurMedal() {
-        let rsp
         try {
-          rsp = (await axios.get('https://api.live.bilibili.com/live_user/v1/UserInfo/get_weared_medal', {
-            withCredentials: true
-          })).data
-          if (rsp.code !== 0) {
-            throw rsp.message
-          }
+          this.curMedal = await getCurMedal()
         } catch (e) {
           this.$message.error(e)
-          return
         }
-        let curMedal = rsp.data
-        if (curMedal.medal_id === undefined) {
-          // 没佩戴牌子
-          curMedal = null
-        }
-        this.curMedal = curMedal
       },
       async wearMedal(medal) {
-        let csrfToken = getCsrfToken()
-        let data = new FormData()
-        data.append('medal_id', medal.medal_id)
-        data.append('csrf_token', csrfToken)
-        data.append('csrf', csrfToken)
         try {
-          let rsp = (await axios.post(
-            'https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear', data, { withCredentials: true }
-          )).data
-          if (rsp.code !== 0) {
-            throw rsp.message
-          }
+          await wearMedal(medal.medal_id)
         } catch (e) {
           this.$message.error(e)
           return
@@ -233,17 +202,8 @@
         this.updateCurMedal()
       },
       async takeOffMedal() {
-        let csrfToken = getCsrfToken()
-        let data = new FormData()
-        data.append('csrf_token', csrfToken)
-        data.append('csrf', csrfToken)
         try {
-          let rsp = (await axios.post(
-            'https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/take_off', data, { withCredentials: true }
-          )).data
-          if (rsp.code !== 0) {
-            throw rsp.message
-          }
+          await takeOffMedal()
         } catch (e) {
           this.$message.error(e)
           return
@@ -253,8 +213,57 @@
     }
   }
 
+  let apiClient = axios.create({
+    baseURL: 'https://api.live.bilibili.com',
+    withCredentials: true
+  })
+
+  async function getMedals() {
+    let rsp = (await apiClient.get('/fans_medal/v5/live_fans_medal/iApiMedal?page=1&pageSize=1000')).data
+    if (rsp.code !== 0) {
+      throw rsp.message
+    }
+    return rsp.data.fansMedalList
+  }
+
+  async function getCurMedal() {
+    let rsp = (await apiClient.get('/live_user/v1/UserInfo/get_weared_medal')).data
+    if (rsp.code !== 0) {
+      throw rsp.message
+    }
+    let curMedal = rsp.data
+    if (curMedal.medal_id === undefined) {
+      // 没佩戴牌子
+      curMedal = null
+    }
+    return curMedal
+  }
+
+  async function wearMedal(medalId) {
+    let csrfToken = getCsrfToken()
+    let data = new FormData()
+    data.append('medal_id', medalId)
+    data.append('csrf_token', csrfToken)
+    data.append('csrf', csrfToken)
+    let rsp = (await apiClient.post('/xlive/web-room/v1/fansMedal/wear', data)).data
+    if (rsp.code !== 0) {
+      throw rsp.message
+    }
+  }
+
+  async function takeOffMedal() {
+    let csrfToken = getCsrfToken()
+    let data = new FormData()
+    data.append('csrf_token', csrfToken)
+    data.append('csrf', csrfToken)
+    let rsp = (await apiClient.post('/xlive/web-room/v1/fansMedal/take_off', data)).data
+    if (rsp.code !== 0) {
+      throw rsp.message
+    }
+  }
+
   function getCsrfToken() {
-    let match = document.cookie.match(/bili_jct=(.+?)[;$]/)
+    let match = document.cookie.match(/\bbili_jct=(.+?)(?:;|$)/)
     if (match === null) {
       return ''
     }
