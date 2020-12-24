@@ -7,6 +7,7 @@
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/\d+\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+\??.*/
+// @require      https://unpkg.com/vuex@3.6.0/dist/vuex.js
 // @require      https://cdn.jsdelivr.net/npm/axios@0.21.0/dist/axios.min.js
 // @grant        none
 // ==/UserScript==
@@ -15,7 +16,10 @@
   function main() {
     initLib()
     initCss()
-    waitForLoaded(initUi)
+    waitForLoaded(() => {
+      Vue.use(Vuex)
+      initUi()
+    })
   }
 
   function initLib() {
@@ -76,6 +80,35 @@
     return true
   }
 
+  let store = null
+  function getStore() {
+    if (store === null) {
+      store = new Vuex.Store({
+        state: {
+          medals: [],
+          curMedal: null
+        },
+        mutations: {
+          setMedals(state, medals) {
+            state.medals = medals
+          },
+          setCurMedal(state, curMedal) {
+            state.curMedal = curMedal
+          }
+        },
+        actions: {
+          async updateMedals({ commit }) {
+            commit('setMedals', await getMedals())
+          },
+          async updateCurMedal({ commit }) {
+            commit('setCurMedal', await getCurMedal())
+          }
+        }
+      })
+    }
+    return store
+  }
+
   function initUi() {
     let panelElement = document.querySelector('#control-panel-ctnr-box')
     let myMedalButtonElement = document.createElement('div')
@@ -83,6 +116,7 @@
 
     new Vue({
       el: myMedalButtonElement,
+      store: getStore(),
       components: {
         MedalDialog
       },
@@ -90,11 +124,24 @@
         <div>
           <el-button type="primary" style="font-size: 12px; min-width: 80px; height: 24px; padding: 6px 12px;"
             @click="showMedalDialog"
-          >勋章</el-button>
+          >
+            {{ curMedal === null ? '勋章' : curMedal.medal_name }}
+          </el-button>
           <medal-dialog ref="medalDialog"></medal-dialog>
         </div>
       `,
+      computed: {
+        ...Vuex.mapState({
+          curMedal: state => state.curMedal
+        })
+      },
+      created() {
+        this.updateCurMedal()
+      },
       methods: {
+        ...Vuex.mapActions([
+          'updateCurMedal'
+        ]),
         showMedalDialog() {
           this.$refs.medalDialog.showDialog()
         }
@@ -147,12 +194,14 @@
     `,
     data() {
       return {
-        dialogVisible: false,
-        medals: [],
-        curMedal: null
+        dialogVisible: false
       }
     },
     computed: {
+      ...Vuex.mapState({
+        medals: state => state.medals,
+        curMedal: state => state.curMedal
+      }),
       sortedMedals() {
         const CUR_ROOM_ID = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info.room_id
         let curMedal = []
@@ -173,6 +222,10 @@
       }
     },
     methods: {
+      ...Vuex.mapActions({
+        doUpdateMedals: 'updateMedals',
+        doUpdateCurMedal: 'updateCurMedal'
+      }),
       showDialog() {
         this.updateMedals()
         this.updateCurMedal()
@@ -180,14 +233,14 @@
       },
       async updateMedals() {
         try {
-          this.medals = await getMedals()
+          await this.doUpdateMedals()
         } catch (e) {
           this.$message.error(e)
         }
       },
       async updateCurMedal() {
         try {
-          this.curMedal = await getCurMedal()
+          await this.doUpdateCurMedal()
         } catch (e) {
           this.$message.error(e)
         }
