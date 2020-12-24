@@ -35,13 +35,13 @@
 
   function initCss() {
     let css = `
+      /* 屏蔽原来的牌子按钮 */
       .medal-section {
-        /*
-        position: absolute !important;
-        top: 50px !important;
-        border-right: none !important;
-        */
-        /* 屏蔽原来的牌子按钮 */
+        display: none !important;
+      }
+
+      /* 屏蔽选牌子对话框，防止刷新时闪烁 */
+      .dialog-ctnr.medal {
         display: none !important;
       }
     `
@@ -249,6 +249,7 @@
     if (rsp.code !== 0) {
       throw rsp.message
     }
+    refreshBilibiliCurMedalCache()
   }
 
   async function takeOffMedal() {
@@ -260,6 +261,7 @@
     if (rsp.code !== 0) {
       throw rsp.message
     }
+    refreshBilibiliCurMedalCache()
   }
 
   function getCsrfToken() {
@@ -268,6 +270,15 @@
       return ''
     }
     return match[1]
+  }
+
+  function refreshBilibiliCurMedalCache() {
+    let originalMedalButton = document.querySelector('.medal-section .fans-medal-item')
+    if (originalMedalButton === null) {
+      return
+    }
+    originalMedalButton.click()
+    setTimeout(() => originalMedalButton.click(), 0)
   }
 
   main()
