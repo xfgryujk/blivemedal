@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
@@ -85,6 +85,8 @@
     if (store === null) {
       store = new Vuex.Store({
         state: {
+          config: loadConfig(),
+
           medals: [],
           curMedal: null
         },
@@ -94,6 +96,12 @@
           },
           setCurMedal(state, curMedal) {
             state.curMedal = curMedal
+          },
+          setConfigItems(state, config) {
+            for (let name in config) {
+              state.config[name] = config[name]
+            }
+            saveConfig(state.config)
           }
         },
         actions: {
@@ -107,6 +115,24 @@
       })
     }
     return store
+  }
+
+  function loadConfig() {
+    let config
+    try {
+      config = JSON.parse(window.localStorage.blivemedalConfig || '{}')
+    } catch {
+      config = {}
+    }
+
+    if (config.autoWearMedal === undefined) {
+      config.autoWearMedal = false
+    }
+    return config
+  }
+
+  function saveConfig(config) {
+    window.localStorage.blivemedalConfig = JSON.stringify(config)
   }
 
   function initUi() {
@@ -132,16 +158,29 @@
       `,
       computed: {
         ...Vuex.mapState({
+          config: state => state.config,
           curMedal: state => state.curMedal
         })
       },
-      created() {
+      async created() {
+        await this.tryAutoWearMedal()
         this.updateCurMedal()
       },
       methods: {
         ...Vuex.mapActions([
           'updateCurMedal'
         ]),
+        async tryAutoWearMedal() {
+          try {
+            if (this.config.autoWearMedal) {
+              let medalInfo = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.anchor_info.medal_info
+              if (medalInfo !== null) {
+                await wearMedal(medalInfo.medal_id)
+              }
+            }
+          } catch {
+          }
+        },
         showMedalDialog() {
           this.$refs.medalDialog.showDialog()
         }
@@ -153,6 +192,8 @@
     name: 'MedalDialog',
     template: `
       <el-dialog :visible.sync="dialogVisible" title="我的粉丝勋章" top="60px" width="850px" :modal="false">
+        <el-checkbox label="进入直播间时自动佩戴勋章" :value="config.autoWearMedal" @change="onAutoWearMedalChange"></el-checkbox>
+
         <el-table :data="sortedMedals" stripe height="70vh">
           <el-table-column label="勋章" prop="medal_name" width="100" sortable
             :sort-method="(a, b) => a.medal_name.localeCompare(b.medal_name)"
@@ -199,18 +240,25 @@
     },
     computed: {
       ...Vuex.mapState({
+        config: state => state.config,
         medals: state => state.medals,
         curMedal: state => state.curMedal
       }),
       sortedMedals() {
-        const CUR_ROOM_ID = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info.room_id
+        let curRoomId
+        try {
+          curRoomId = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info.room_id
+        } catch {
+          curRoomId = 0
+        }
+
         let curMedal = []
         let curRoomMedal = []
         let medals = []
         for (let medal of this.medals) {
           if (this.curMedal !== null && medal.medal_id === this.curMedal.medal_id) {
             curMedal.push(medal)
-          } else if (medal.roomid === CUR_ROOM_ID) {
+          } else if (medal.roomid === curRoomId) {
             curRoomMedal.push(medal)
           } else {
             medals.push(medal)
@@ -222,6 +270,9 @@
       }
     },
     methods: {
+      ...Vuex.mapMutations([
+        'setConfigItems'
+      ]),
       ...Vuex.mapActions({
         doUpdateMedals: 'updateMedals',
         doUpdateCurMedal: 'updateCurMedal'
@@ -230,6 +281,11 @@
         this.updateMedals()
         this.updateCurMedal()
         this.dialogVisible = true
+      },
+      onAutoWearMedalChange(value) {
+        this.setConfigItems({
+          autoWearMedal: value
+        })
       },
       async updateMedals() {
         try {
