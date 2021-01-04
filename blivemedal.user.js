@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
@@ -193,8 +193,9 @@
     template: `
       <el-dialog :visible.sync="dialogVisible" title="我的粉丝勋章" top="60px" width="850px" :modal="false">
         <el-checkbox label="进入直播间时自动佩戴勋章" :value="config.autoWearMedal" @change="onAutoWearMedalChange"></el-checkbox>
+        <el-input v-model="query" placeholder="搜索" clearable style="margin-left: 16px; width: 200px"></el-input>
 
-        <el-table :data="sortedMedals" stripe height="70vh">
+        <el-table :data="medalsTableData" stripe height="70vh">
           <el-table-column label="勋章" prop="medal_name" width="100" sortable
             :sort-method="(a, b) => a.medal_name.localeCompare(b.medal_name)"
           >
@@ -235,7 +236,8 @@
     `,
     data() {
       return {
-        dialogVisible: false
+        dialogVisible: false,
+        query: ''
       }
     },
     computed: {
@@ -244,6 +246,22 @@
         medals: state => state.medals,
         curMedal: state => state.curMedal
       }),
+      medalsTableData() {
+        if (this.query === '') {
+          return this.sortedMedals
+        }
+
+        let query = this.query.toLowerCase()
+        let res = []
+        for (let medal of this.sortedMedals) {
+          if (medal.medal_name.toLowerCase().indexOf(query) !== -1
+              || medal.target_name.toLowerCase().indexOf(query) !== -1
+          ) {
+            res.push(medal)
+          }
+        }
+        return res
+      },
       sortedMedals() {
         let curRoomId
         try {
