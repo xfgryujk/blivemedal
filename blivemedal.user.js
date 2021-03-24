@@ -43,7 +43,6 @@
       .medal-section {
         display: none !important;
       }
-
       /* 屏蔽选牌子对话框，防止刷新时闪烁 */
       .dialog-ctnr.medal {
         display: none !important;
@@ -128,6 +127,15 @@
     if (config.autoWearMedal === undefined) {
       config.autoWearMedal = false
     }
+
+    if (config.autoWearMedalWithoutOwnMedal === undefined) {
+        config.autoWearMedalWithoutOwnMedal = false
+    }
+
+    if (config.defaultMedal === undefined) {
+        config.defaultMedal = ''
+    }
+
     return config
   }
 
@@ -163,7 +171,13 @@
         })
       },
       async created() {
-        await this.tryAutoWearMedal()
+        if(!(await this.tryAutoWearMedal())) {
+            const config = this.config
+            if(config.autoWearMedalWithoutOwnMedal && config.defaultMedal !== '' && config.autoWearMedal){
+              await sleep(500)
+              await wearMedal(config.defaultMedal)
+            }
+        }
         this.updateCurMedal()
       },
       methods: {
@@ -176,9 +190,12 @@
               let medalInfo = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.anchor_info.medal_info
               if (medalInfo !== null) {
                 await wearMedal(medalInfo.medal_id)
+                return true
               }
             }
+            return false
           } catch {
+              return false
           }
         },
         showMedalDialog() {
@@ -193,8 +210,23 @@
     template: `
       <el-dialog :visible.sync="dialogVisible" title="我的粉丝勋章" top="60px" width="850px" :modal="false">
         <el-checkbox label="进入直播间时自动佩戴勋章" :value="config.autoWearMedal" @change="onAutoWearMedalChange"></el-checkbox>
-        <el-input v-model="query" placeholder="搜索" clearable style="margin-left: 16px; width: 200px"></el-input>
-
+        <el-checkbox v-if="config.autoWearMedal" label="进入没有此直播间牌子时自动佩戴指定勋章" :value="config.autoWearMedalWithoutOwnMedal" @change="onAutoWearMedalWithoutOwnMedalChange"></el-checkbox>
+        <el-select v-if="config.autoWearMedalWithoutOwnMedal" style="margin-left: 8px; width: 120px"
+            filterable placeholder="请选择牌子" :value="config.defaultMedal" @change="onDefaultMedalChange" clearable
+        >
+            <el-option
+                v-for="(item, key) in sortedMedals"
+                :key = "key"
+                :label="item.target_name"
+                :value="item.medal_id"
+            >
+                <span style="float: left">{{ item.target_name }}</span>
+                <span style="float: right; color: #8492a6; font-size: 13px">{{ item.medalName }}</span>
+            </el-option>
+        </el-select>
+        <el-input v-model="query" placeholder="搜索" clearable 
+                :style="{ 'margin-left': config.autoWearMedalWithoutOwnMedal ? '8px' : '16px', 'width': config.autoWearMedalWithoutOwnMedal ? '150px' : '200px' }">
+        </el-input>
         <el-table :data="medalsTableData" stripe height="70vh">
           <el-table-column label="勋章" prop="medal_name" width="100" sortable
             :sort-method="(a, b) => a.medal_name.localeCompare(b.medal_name)"
@@ -237,7 +269,7 @@
     data() {
       return {
         dialogVisible: false,
-        query: ''
+        query: '',
       }
     },
     computed: {
@@ -303,6 +335,16 @@
       onAutoWearMedalChange(value) {
         this.setConfigItems({
           autoWearMedal: value
+        })
+      },      
+      onAutoWearMedalWithoutOwnMedalChange(value) {
+        this.setConfigItems({
+          autoWearMedalWithoutOwnMedal: value
+        })
+      },
+      onDefaultMedalChange(value) {
+        this.setConfigItems({
+          defaultMedal: value
         })
       },
       async updateMedals() {
@@ -406,6 +448,11 @@
     }
     originalMedalButton.click()
     setTimeout(() => originalMedalButton.click(), 0)
+  }
+
+  // https://zeit.co/blog/async-and-await
+  function sleep (time) {
+    return new Promise((resolve) => setTimeout(resolve, time));
   }
 
   main()
