@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
@@ -43,6 +43,7 @@
       .medal-section {
         display: none !important;
       }
+
       /* 屏蔽选牌子对话框，防止刷新时闪烁 */
       .dialog-ctnr.medal {
         display: none !important;
@@ -127,15 +128,12 @@
     if (config.autoWearMedal === undefined) {
       config.autoWearMedal = false
     }
-
-    if (config.autoWearMedalWithoutOwnMedal === undefined) {
-        config.autoWearMedalWithoutOwnMedal = false
+    if (config.autoWearDefaultMedal === undefined) {
+      config.autoWearDefaultMedal = false
     }
-
-    if (config.defaultMedal === undefined) {
-        config.defaultMedal = ''
+    if (config.defaultMedalId === undefined) {
+      config.defaultMedalId = ''
     }
-
     return config
   }
 
@@ -171,13 +169,7 @@
         })
       },
       async created() {
-        if(!(await this.tryAutoWearMedal())) {
-            const config = this.config
-            if(config.autoWearMedalWithoutOwnMedal && config.defaultMedal !== '' && config.autoWearMedal){
-              await sleep(500)
-              await wearMedal(config.defaultMedal)
-            }
-        }
+        await this.tryAutoWearMedal()
         this.updateCurMedal()
       },
       methods: {
@@ -185,17 +177,24 @@
           'updateCurMedal'
         ]),
         async tryAutoWearMedal() {
+          if (!this.config.autoWearMedal) {
+            return
+          }
+
           try {
-            if (this.config.autoWearMedal) {
-              let medalInfo = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.anchor_info.medal_info
-              if (medalInfo !== null) {
-                await wearMedal(medalInfo.medal_id)
-                return true
-              }
+            let medalInfo = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.anchor_info.medal_info
+            if (medalInfo !== null) {
+              await wearMedal(medalInfo.medal_id)
+              return
             }
-            return false
           } catch {
-              return false
+          }
+
+          try {
+            if (this.config.autoWearDefaultMedal && this.config.defaultMedalId !== '') {
+              await wearMedal(this.config.defaultMedalId)
+            }
+          } catch {
           }
         },
         showMedalDialog() {
@@ -209,24 +208,26 @@
     name: 'MedalDialog',
     template: `
       <el-dialog :visible.sync="dialogVisible" title="我的粉丝勋章" top="60px" width="850px" :modal="false">
-        <el-checkbox label="进入直播间时自动佩戴勋章" :value="config.autoWearMedal" @change="onAutoWearMedalChange"></el-checkbox>
-        <el-checkbox v-if="config.autoWearMedal" label="进入没有此直播间牌子时自动佩戴指定勋章" :value="config.autoWearMedalWithoutOwnMedal" @change="onAutoWearMedalWithoutOwnMedalChange"></el-checkbox>
-        <el-select v-if="config.autoWearMedalWithoutOwnMedal" style="margin-left: 8px; width: 120px"
-            filterable placeholder="请选择牌子" :value="config.defaultMedal" @change="onDefaultMedalChange" clearable
-        >
-            <el-option
-                v-for="(item, key) in sortedMedals"
-                :key = "key"
-                :label="item.target_name"
-                :value="item.medal_id"
+        <div style="line-height: 40px">
+          <el-checkbox label="进入直播间时自动佩戴勋章" :value="config.autoWearMedal"
+            @change="value => setConfigItems({ autoWearMedal: value })"
+          ></el-checkbox>
+          <el-checkbox v-show="config.autoWearMedal" label="没有对应勋章时佩戴" :value="config.autoWearDefaultMedal"
+            @change="value => setConfigItems({ autoWearDefaultMedal: value })"
+          ></el-checkbox>
+          <el-select v-show="config.autoWearMedal" style="margin-left: 16px; width: 200px"
+            filterable :value="config.defaultMedalId" @change="value => setConfigItems({ defaultMedalId: value })"
+          >
+            <el-option v-for="item in sortedMedals" :key="item.medal_id"
+              :label="item.target_name + ' / ' + item.medal_name" :value="item.medal_id"
             >
-                <span style="float: left">{{ item.target_name }}</span>
-                <span style="float: right; color: #8492a6; font-size: 13px">{{ item.medalName }}</span>
+              <span>{{ item.target_name }}</span>
+              <span style="float: right; color: #8492a6; font-size: 13px">{{ item.medal_name }}</span>
             </el-option>
-        </el-select>
-        <el-input v-model="query" placeholder="搜索" clearable 
-                :style="{ 'margin-left': config.autoWearMedalWithoutOwnMedal ? '8px' : '16px', 'width': config.autoWearMedalWithoutOwnMedal ? '150px' : '200px' }">
-        </el-input>
+          </el-select>
+          <el-input v-model="query" placeholder="搜索" clearable style="float: right; width: 180px"></el-input>
+        </div>
+
         <el-table :data="medalsTableData" stripe height="70vh">
           <el-table-column label="勋章" prop="medal_name" width="100" sortable
             :sort-method="(a, b) => a.medal_name.localeCompare(b.medal_name)"
@@ -269,7 +270,7 @@
     data() {
       return {
         dialogVisible: false,
-        query: '',
+        query: ''
       }
     },
     computed: {
@@ -331,21 +332,6 @@
         this.updateMedals()
         this.updateCurMedal()
         this.dialogVisible = true
-      },
-      onAutoWearMedalChange(value) {
-        this.setConfigItems({
-          autoWearMedal: value
-        })
-      },      
-      onAutoWearMedalWithoutOwnMedalChange(value) {
-        this.setConfigItems({
-          autoWearMedalWithoutOwnMedal: value
-        })
-      },
-      onDefaultMedalChange(value) {
-        this.setConfigItems({
-          defaultMedal: value
-        })
       },
       async updateMedals() {
         try {
@@ -448,11 +434,6 @@
     }
     originalMedalButton.click()
     setTimeout(() => originalMedalButton.click(), 0)
-  }
-
-  // https://zeit.co/blog/async-and-await
-  function sleep (time) {
-    return new Promise((resolve) => setTimeout(resolve, time));
   }
 
   main()
