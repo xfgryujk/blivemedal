@@ -172,10 +172,11 @@
       },
       async created() {
         if(!(await this.tryAutoWearMedal())) {
-            let config = this.config
+            const config = this.config
             if(config.autoWearMedalWithoutOwnMedal && config.defaultMedal !== '' && config.autoWearMedal){
-              await sleep(500 * cnt)
-              await wearMedal(config.defaultMedal)
+              do{
+                await sleep(500)
+              } while(await wearMedal(config.defaultMedal))
             }
         }
         this.updateCurMedal()
