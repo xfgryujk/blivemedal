@@ -174,9 +174,8 @@
         if(!(await this.tryAutoWearMedal())) {
             const config = this.config
             if(config.autoWearMedalWithoutOwnMedal && config.defaultMedal !== '' && config.autoWearMedal){
-              do{
-                await sleep(500)
-              } while(await wearMedal(config.defaultMedal))
+              await sleep(500)
+              await wearMedal(config.defaultMedal)
             }
         }
         this.updateCurMedal()
