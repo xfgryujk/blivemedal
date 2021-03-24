@@ -172,7 +172,7 @@
       },
       async created() {
         status = await this.tryAutoWearMedal()
-        if(!status) {
+        if(status === "false") {
             let config = this.config
             if(config.autoWearMedalWithoutOwnMedal && config.defaultMedal !== '' && config.autoWearMedal){
                 await sleep(500)
