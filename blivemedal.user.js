@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.5
+// @version      0.6
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
@@ -192,6 +192,7 @@
 
           try {
             if (this.config.autoWearDefaultMedal && this.config.defaultMedalId !== '') {
+              await sleep(1000)
               await wearMedal(this.config.defaultMedalId)
             }
           } catch {
@@ -434,6 +435,10 @@
     }
     originalMedalButton.click()
     setTimeout(() => originalMedalButton.click(), 0)
+  }
+
+  async function sleep(time) {
+    return new Promise(resolve => window.setTimeout(resolve, time))
   }
 
   main()
