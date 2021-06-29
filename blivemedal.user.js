@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.7
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
@@ -208,7 +208,7 @@
   let MedalDialog = {
     name: 'MedalDialog',
     template: `
-      <el-dialog :visible.sync="dialogVisible" title="我的粉丝勋章" top="60px" width="850px" :modal="false">
+      <el-dialog :visible.sync="dialogVisible" title="我的粉丝勋章" top="60px" width="850px" :modal="false" append-to-body>
         <div style="line-height: 40px">
           <el-checkbox label="进入直播间时自动佩戴勋章" :value="config.autoWearMedal"
             @change="value => setConfigItems({ autoWearMedal: value })"
