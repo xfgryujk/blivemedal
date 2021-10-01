@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.7
+// @version      0.8
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
@@ -106,7 +106,7 @@
         },
         actions: {
           async updateMedals({ commit }) {
-            commit('setMedals', await getMedals())
+            commit('setMedals', getMedalsAsync())
           },
           async updateCurMedal({ commit }) {
             commit('setCurMedal', await getCurMedal())
@@ -335,6 +335,10 @@
         this.dialogVisible = true
       },
       async updateMedals() {
+        // 只加载一次
+        if (this.medals.length !== 0) {
+          return
+        }
         try {
           await this.doUpdateMedals()
         } catch (e) {
@@ -374,12 +378,71 @@
     withCredentials: true
   })
 
-  async function getMedals() {
-    let rsp = (await apiClient.get('/fans_medal/v5/live_fans_medal/iApiMedal?page=1&pageSize=1000')).data
-    if (rsp.code !== 0) {
-      throw rsp.message
+  function getMedalsAsync() {
+    let res = []
+
+    async function doGetMedalsAsync() {
+      // 获取第一页和总页数
+      let rsp
+      try {
+        rsp = await getPage(1)
+      } catch (e) {
+        console.error('获取勋章列表第 1 页失败：', e)
+        return
+      }
+      for (let medal of rsp.fansMedalList) {
+        res.push(medal)
+      }
+
+      // 并发获取剩下的页
+      if (rsp.pageinfo.totalpages <= 1) {
+        return
+      }
+      let pageQueue = []
+      for (let page = 2; page <= rsp.pageinfo.totalpages; page++) {
+        pageQueue.push(page)
+      }
+      const WORKER_NUM = 8
+      let workerPromises = []
+      for (let i = 0; i < WORKER_NUM; i++) {
+        workerPromises.push(worker(pageQueue))
+      }
+      await Promise.all(workerPromises)
     }
-    return rsp.data.fansMedalList
+
+    async function worker(pageQueue) {
+      while (true) {
+        let page = pageQueue.shift()
+        if (page === undefined) {
+          break
+        }
+
+        let rsp
+        try {
+          rsp = await getPage(page)
+        } catch (e) {
+          console.error(`获取勋章列表第 ${page} 页失败：`, e)
+          continue
+        }
+        for (let medal of rsp.fansMedalList) {
+          res.push(medal)
+        }
+      }
+    }
+
+    async function getPage(page) {
+      let rsp = (await apiClient.get('/fans_medal/v5/live_fans_medal/iApiMedal', { params: {
+        pageSize: 10,
+        page: page
+      } })).data
+      if (rsp.code !== 0) {
+        throw rsp.message
+      }
+      return rsp.data
+    }
+
+    doGetMedalsAsync()
+    return res
   }
 
   async function getCurMedal() {
