@@ -12,7 +12,7 @@
 // @grant        none
 // ==/UserScript==
 
-(function() {
+(function () {
   function main() {
     initLib()
     initCss()
@@ -27,14 +27,19 @@
     scriptElement.src = 'https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js'
     document.head.appendChild(scriptElement)
 
+    if (typeof (Vuex) != 'object') {
+      scriptElement = document.createElement('script')
+      scriptElement.src = 'https://unpkg.com/vuex@3.6.0/dist/vuex.js'
+      document.head.appendChild(scriptElement)
+    }
+    scriptElement = document.createElement('script')
+    scriptElement.src = 'https://unpkg.com/element-ui@2.14.1/lib/index.js'
+    document.head.appendChild(scriptElement)
+
     let linkElement = document.createElement('link')
     linkElement.rel = 'stylesheet'
     linkElement.href = 'https://unpkg.com/element-ui@2.14.1/lib/theme-chalk/index.css'
     document.head.appendChild(linkElement)
-    
-    scriptElement = document.createElement('script')
-    scriptElement.src = 'https://unpkg.com/element-ui@2.14.1/lib/index.js'
-    document.head.appendChild(scriptElement)
   }
 
   function initCss() {
@@ -54,7 +59,7 @@
     document.head.appendChild(styleElement)
   }
 
-  function waitForLoaded(callback, timeout=10 * 1000) {
+  function waitForLoaded(callback, timeout = 10 * 1000) {
     let startTime = new Date()
     function poll() {
       if (isLoaded()) {
@@ -226,6 +231,7 @@
               <span style="float: right; color: #8492a6; font-size: 13px">{{ item.medal_name }}</span>
             </el-option>
           </el-select>
+          <el-button v-show="!config.autoWearMedal" @click="flushMedalsList" size="mini">刷新列表</el-button>
           <el-input v-model="query" placeholder="搜索" clearable style="float: right; width: 180px"></el-input>
         </div>
 
@@ -254,7 +260,7 @@
           </el-table-column>
           <el-table-column label="本日亲密度/原力值" prop="today_intimacy" width="160" sortable>
             <template slot-scope="scope">
-              {{ scope.row.today_intimacy }} / {{ scope.row.day_limit }}
+              {{ scope.row.today_feed }} / {{ scope.row.day_limit }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120">
@@ -289,7 +295,7 @@
         let res = []
         for (let medal of this.sortedMedals) {
           if (medal.medal_name.toLowerCase().indexOf(query) !== -1
-              || medal.target_name.toLowerCase().indexOf(query) !== -1
+            || medal.target_name.toLowerCase().indexOf(query) !== -1
           ) {
             res.push(medal)
           }
@@ -369,6 +375,11 @@
           return
         }
         this.updateCurMedal()
+      },
+      flushMedalsList() {
+        this.$store.state.medals = [] // 清空列表
+        this.updateMedals()
+        this.updateCurMedal()
       }
     }
   }
@@ -390,16 +401,16 @@
         console.error('获取勋章列表第 1 页失败：', e)
         return
       }
-      for (let medal of rsp.fansMedalList) {
+      for (let medal of rsp.items) {
         res.push(medal)
       }
 
       // 并发获取剩下的页
-      if (rsp.pageinfo.totalpages <= 1) {
+      if (rsp.page_info.total_page <= 1) {
         return
       }
       let pageQueue = []
-      for (let page = 2; page <= rsp.pageinfo.totalpages; page++) {
+      for (let page = 2; page <= rsp.page_info.total_page; page++) {
         pageQueue.push(page)
       }
       const WORKER_NUM = 8
@@ -424,17 +435,19 @@
           console.error(`获取勋章列表第 ${page} 页失败：`, e)
           continue
         }
-        for (let medal of rsp.fansMedalList) {
+        for (let medal of rsp.items) {
           res.push(medal)
         }
       }
     }
 
     async function getPage(page) {
-      let rsp = (await apiClient.get('/fans_medal/v5/live_fans_medal/iApiMedal', { params: {
-        pageSize: 10,
-        page: page
-      } })).data
+      let rsp = (await apiClient.get('/xlive/app-ucenter/v1/user/GetMyMedals', {
+        params: {
+          page: page,
+          page_size: 10
+        }
+      })).data
       if (rsp.code !== 0) {
         throw rsp.message
       }
