@@ -27,11 +27,6 @@
     scriptElement.src = 'https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js'
     document.head.appendChild(scriptElement)
 
-    if (typeof (Vuex) != 'object') {
-      scriptElement = document.createElement('script')
-      scriptElement.src = 'https://unpkg.com/vuex@3.6.0/dist/vuex.js'
-      document.head.appendChild(scriptElement)
-    }
     scriptElement = document.createElement('script')
     scriptElement.src = 'https://unpkg.com/element-ui@2.14.1/lib/index.js'
     document.head.appendChild(scriptElement)
@@ -107,6 +102,9 @@
               state.config[name] = config[name]
             }
             saveConfig(state.config)
+          },
+          resetMedalsList(state){
+              state.medals = []
           }
         },
         actions: {
@@ -329,7 +327,8 @@
     },
     methods: {
       ...Vuex.mapMutations([
-        'setConfigItems'
+        'setConfigItems',
+        'resetMedalsList'
       ]),
       ...Vuex.mapActions({
         doUpdateMedals: 'updateMedals',
@@ -377,7 +376,7 @@
         this.updateCurMedal()
       },
       flushMedalsList() {
-        this.$store.state.medals = [] // 清空列表
+        this.resetMedalsList() // 清空列表
         this.updateMedals()
         this.updateCurMedal()
       }
