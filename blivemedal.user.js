@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.8
+// @version      0.9
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/\d+\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+\??.*/
-// @require      https://unpkg.com/vuex@3.6.0/dist/vuex.js
+// @require      https://cdn.jsdelivr.net/npm/vuex@3.6.0/dist/vuex.js
 // @require      https://cdn.jsdelivr.net/npm/axios@0.21.0/dist/axios.min.js
 // @grant        none
 // ==/UserScript==
@@ -27,14 +27,14 @@
     scriptElement.src = 'https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js'
     document.head.appendChild(scriptElement)
 
-    scriptElement = document.createElement('script')
-    scriptElement.src = 'https://unpkg.com/element-ui@2.14.1/lib/index.js'
-    document.head.appendChild(scriptElement)
-
     let linkElement = document.createElement('link')
     linkElement.rel = 'stylesheet'
-    linkElement.href = 'https://unpkg.com/element-ui@2.14.1/lib/theme-chalk/index.css'
+    linkElement.href = 'https://cdn.jsdelivr.net/npm/element-ui@2.14.1/lib/theme-chalk/index.css'
     document.head.appendChild(linkElement)
+
+    scriptElement = document.createElement('script')
+    scriptElement.src = 'https://cdn.jsdelivr.net/npm/element-ui@2.14.1/lib/index.js'
+    document.head.appendChild(scriptElement)
   }
 
   function initCss() {
@@ -102,9 +102,6 @@
               state.config[name] = config[name]
             }
             saveConfig(state.config)
-          },
-          resetMedalsList(state){
-              state.medals = []
           }
         },
         actions: {
@@ -219,7 +216,7 @@
           <el-checkbox v-show="config.autoWearMedal" label="没有对应勋章时佩戴" :value="config.autoWearDefaultMedal"
             @change="value => setConfigItems({ autoWearDefaultMedal: value })"
           ></el-checkbox>
-          <el-select v-show="config.autoWearMedal" style="margin-left: 16px; width: 200px"
+          <el-select v-show="config.autoWearMedal" style="margin-left: 16px; width: 240px"
             filterable :value="config.defaultMedalId" @change="value => setConfigItems({ defaultMedalId: value })"
           >
             <el-option v-for="item in sortedMedals" :key="item.medal_id"
@@ -229,11 +226,13 @@
               <span style="float: right; color: #8492a6; font-size: 13px">{{ item.medal_name }}</span>
             </el-option>
           </el-select>
-          <el-button v-show="!config.autoWearMedal" @click="flushMedalsList" size="mini">刷新列表</el-button>
-          <el-input v-model="query" placeholder="搜索" clearable style="float: right; width: 180px"></el-input>
+        </div>
+        <div>
+          <el-button icon="el-icon-refresh" @click="refreshMedals">刷新勋章</el-button>
+          <el-input type="primary" v-model="query" placeholder="搜索" clearable style="margin-left: 70px; width: 180px"></el-input>
         </div>
 
-        <el-table :data="medalsTableData" stripe height="70vh">
+        <el-table :data="medalsTableData" stripe height="80vh">
           <el-table-column label="勋章" prop="medal_name" width="100" sortable
             :sort-method="(a, b) => a.medal_name.localeCompare(b.medal_name)"
           >
@@ -293,7 +292,7 @@
         let res = []
         for (let medal of this.sortedMedals) {
           if (medal.medal_name.toLowerCase().indexOf(query) !== -1
-            || medal.target_name.toLowerCase().indexOf(query) !== -1
+              || medal.target_name.toLowerCase().indexOf(query) !== -1
           ) {
             res.push(medal)
           }
@@ -327,23 +326,26 @@
     },
     methods: {
       ...Vuex.mapMutations([
-        'setConfigItems',
-        'resetMedalsList'
+        'setConfigItems'
       ]),
       ...Vuex.mapActions({
         doUpdateMedals: 'updateMedals',
         doUpdateCurMedal: 'updateCurMedal'
       }),
       showDialog() {
-        this.updateMedals()
+        // 只自动加载一次
+        if (this.medals.length === 0) {
+          this.updateMedals()
+        }
         this.updateCurMedal()
         this.dialogVisible = true
       },
+      refreshMedals() {
+        this.updateMedals()
+        this.updateCurMedal()
+        refreshBilibiliCurMedalCache()
+      },
       async updateMedals() {
-        // 只加载一次
-        if (this.medals.length !== 0) {
-          return
-        }
         try {
           await this.doUpdateMedals()
         } catch (e) {
@@ -373,11 +375,6 @@
           this.$message.error(e)
           return
         }
-        this.updateCurMedal()
-      },
-      flushMedalsList() {
-        this.resetMedalsList() // 清空列表
-        this.updateMedals()
         this.updateCurMedal()
       }
     }
@@ -443,8 +440,8 @@
     async function getPage(page) {
       let rsp = (await apiClient.get('/xlive/app-ucenter/v1/user/GetMyMedals', {
         params: {
-          page: page,
-          page_size: 10
+          page_size: 10,
+          page: page
         }
       })).data
       if (rsp.code !== 0) {
