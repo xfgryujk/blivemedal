@@ -319,8 +319,20 @@
             medals.push(medal)
           }
         }
-        // 剩下的按上次佩戴时间降序排序
-        medals.sort((a, b) => b.last_wear_time - a.last_wear_time)
+
+        // 不是当前牌子或当前房间牌子的按 (等级降序, 亲密度降序, 牌子ID升序) 排序
+        medals.sort((a, b) => {
+          let aKey = [-a.level, -a.intimacy, a.medal_id]
+          let bKey = [-b.level, -b.intimacy, b.medal_id]
+          for (let i = 0; i < aKey.length; i++) {
+            let diff = aKey[i] - bKey[i]
+            if (diff !== 0) {
+              return diff
+            }
+          }
+          return 0
+        })
+
         return [...curMedal, ...curRoomMedal, ...medals]
       }
     },
