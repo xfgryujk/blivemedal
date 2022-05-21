@@ -1,39 +1,44 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.9
+// @version      0.10
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/\d+\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+\??.*/
-// @require      https://cdn.jsdelivr.net/npm/vuex@3.6.0/dist/vuex.js
-// @require      https://cdn.jsdelivr.net/npm/axios@0.21.0/dist/axios.min.js
+// @require      https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js
+// @require      https://cdn.jsdelivr.net/npm/vuex@3.6.2/dist/vuex.js
+// @require      https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js
 // @grant        none
 // ==/UserScript==
 
 (function () {
-  function main() {
+  async function main() {
+    // 覆盖B站的Vue全局变量，否则element-ui会找错
+    let oldGlobalVue = window.Vue
+    window.Vue = Vue
     initLib()
     initCss()
-    waitForLoaded(() => {
-      Vue.use(Vuex)
-      initUi()
-    })
+    try {
+      await waitForLoaded()
+    } finally {
+      window.Vue = oldGlobalVue
+    }
+
+    initUi()
   }
 
   function initLib() {
-    let scriptElement = document.createElement('script')
-    scriptElement.src = 'https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js'
-    document.head.appendChild(scriptElement)
+    Vue.use(Vuex)
 
     let linkElement = document.createElement('link')
     linkElement.rel = 'stylesheet'
-    linkElement.href = 'https://cdn.jsdelivr.net/npm/element-ui@2.14.1/lib/theme-chalk/index.css'
+    linkElement.href = 'https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/theme-chalk/index.css'
     document.head.appendChild(linkElement)
 
-    scriptElement = document.createElement('script')
-    scriptElement.src = 'https://cdn.jsdelivr.net/npm/element-ui@2.14.1/lib/index.js'
+    let scriptElement = document.createElement('script')
+    scriptElement.src = 'https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/index.js'
     document.head.appendChild(scriptElement)
   }
 
@@ -54,20 +59,22 @@
     document.head.appendChild(styleElement)
   }
 
-  function waitForLoaded(callback, timeout = 10 * 1000) {
-    let startTime = new Date()
-    function poll() {
-      if (isLoaded()) {
-        callback()
-        return
+  async function waitForLoaded(timeout = 10 * 1000) {
+    return new Promise((resolve, reject) => {
+      let startTime = new Date()
+      function poll() {
+        if (isLoaded()) {
+          resolve()
+          return
+        }
+        if (new Date() - startTime > timeout) {
+          reject(new Error('[blivemedal] 加载element-ui超时'))
+          return
+        }
+        setTimeout(poll, 1000)
       }
-
-      if (new Date() - startTime > timeout) {
-        return
-      }
-      setTimeout(poll, 1000)
-    }
-    poll()
+      poll()
+    })
   }
 
   function isLoaded() {
