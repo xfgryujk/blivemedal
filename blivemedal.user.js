@@ -209,11 +209,11 @@
           <el-select v-show="config.autoWearMedal" style="margin-left: 16px; width: 240px"
             filterable :value="config.defaultMedalId" @change="value => setConfigItems({ defaultMedalId: value })"
           >
-            <el-option v-for="item in sortedMedals" :key="item.medal_id"
-              :label="item.target_name + ' / ' + item.medal_name" :value="item.medal_id"
+            <el-option v-for="item in sortedMedals" :key="item.medal.medal_id"
+              :label="item.anchor_info.nick_name + ' / ' + item.medal.medal_name" :value="item.medal.medal_id"
             >
-              <span>{{ item.target_name }}</span>
-              <span style="float: right; color: #8492a6; font-size: 13px">{{ item.medal_name }}</span>
+              <span>{{ item.anchor_info.nick_name }}</span>
+              <span style="float: right; color: #8492a6; font-size: 13px">{{ item.medal.medal_name }}</span>
             </el-option>
           </el-select>
         </div>
@@ -223,36 +223,36 @@
         </div>
 
         <el-table :data="medalsTableData" stripe height="80vh">
-          <el-table-column label="勋章" prop="medal_name" width="100" sortable
-            :sort-method="(a, b) => a.medal_name.localeCompare(b.medal_name)"
+          <el-table-column label="勋章" prop="medal.medal_name" width="100" sortable
+            :sort-method="(a, b) => a.medal.medal_name.localeCompare(b.medal.medal_name)"
           >
             <template slot-scope="scope">
-              <el-tag :type="scope.row.is_lighted ? '' : 'info'">{{ scope.row.medal_name }}</el-tag>
+              <el-tag :type="scope.row.medal.is_lighted ? '' : 'info'">{{ scope.row.medal.medal_name }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="等级" prop="level" width="80" sortable></el-table-column>
-          <el-table-column label="主播昵称" prop="target_name" width="200" sortable
-            :sort-method="(a, b) => a.target_name.localeCompare(b.target_name)"
+          <el-table-column label="等级" prop="medal.level" width="80" sortable></el-table-column>
+          <el-table-column label="主播昵称" prop="anchor_info.nick_name" width="200" sortable
+            :sort-method="(a, b) => a.anchor_info.nick_name.localeCompare(b.anchor_info.nick_name)"
           >
             <template slot-scope="scope">
-              <el-link type="primary" :underline="false" target="_blank" :href="'https://live.bilibili.com/' + scope.row.roomid">
-                {{ scope.row.target_name }}
+              <el-link type="primary" :underline="false" target="_blank" :href="'https://live.bilibili.com/' + scope.row.room_info.room_id">
+                {{ scope.row.anchor_info.nick_name }}
               </el-link>
             </template>
           </el-table-column>
-          <el-table-column label="亲密度/原力值" prop="intimacy" width="140" sortable>
+          <el-table-column label="亲密度/原力值" prop="medal.intimacy" width="140" sortable>
             <template slot-scope="scope">
-              {{ scope.row.intimacy }} / {{ scope.row.next_intimacy }}
+              {{ scope.row.medal.intimacy }} / {{ scope.row.medal.next_intimacy }}
             </template>
           </el-table-column>
-          <el-table-column label="本日亲密度/原力值" prop="today_intimacy" width="160" sortable>
+          <el-table-column label="本日亲密度/原力值" prop="medal.today_feed" width="160" sortable>
             <template slot-scope="scope">
-              {{ scope.row.today_feed }} / {{ scope.row.day_limit }}
+              {{ scope.row.medal.today_feed }} / {{ scope.row.medal.day_limit }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120">
             <template slot-scope="scope">
-              <el-button v-if="curMedal !== null && scope.row.medal_id === curMedal.medal_id"
+              <el-button v-if="curMedal !== null && scope.row.medal.medal_id === curMedal.medal_id"
                 type="info" size="mini" @click="takeOffMedal"
               >取消佩戴</el-button>
               <el-button v-else type="primary" size="mini" @click="wearMedal(scope.row)">佩戴</el-button>
@@ -281,8 +281,8 @@
         let query = this.query.toLowerCase()
         let res = []
         for (let medal of this.sortedMedals) {
-          if (medal.medal_name.toLowerCase().indexOf(query) !== -1
-              || medal.target_name.toLowerCase().indexOf(query) !== -1
+          if (medal.medal.medal_name.toLowerCase().indexOf(query) !== -1
+              || medal.anchor_info.nick_name.toLowerCase().indexOf(query) !== -1
           ) {
             res.push(medal)
           }
@@ -301,9 +301,9 @@
         let curRoomMedal = []
         let medals = []
         for (let medal of this.medals) {
-          if (this.curMedal !== null && medal.medal_id === this.curMedal.medal_id) {
+          if (this.curMedal !== null && medal.medal.medal_id === this.curMedal.medal_id) {
             curMedal.push(medal)
-          } else if (medal.roomid === curRoomId) {
+          } else if (medal.room_info.roomid === curRoomId) {
             curRoomMedal.push(medal)
           } else {
             medals.push(medal)
@@ -312,8 +312,8 @@
 
         // 不是当前牌子或当前房间牌子的按 (等级降序, 亲密度降序, 牌子ID升序) 排序
         medals.sort((a, b) => {
-          let aKey = [-a.level, -a.intimacy, a.medal_id]
-          let bKey = [-b.level, -b.intimacy, b.medal_id]
+          let aKey = [-a.medal.level, -a.medal.intimacy, a.medal.medal_id]
+          let bKey = [-b.medal.level, -b.medal.intimacy, b.medal.medal_id]
           for (let i = 0; i < aKey.length; i++) {
             let diff = aKey[i] - bKey[i]
             if (diff !== 0) {
@@ -363,7 +363,7 @@
       },
       async wearMedal(medal) {
         try {
-          await wearMedal(medal.medal_id)
+          await wearMedal(medal.medal.medal_id)
         } catch (e) {
           this.$message.error(e)
           return
@@ -399,8 +399,10 @@
         console.error('获取勋章列表第 1 页失败：', e)
         return
       }
-      for (let medal of rsp.items) {
-        res.push(medal)
+      for (let medals of [rsp.special_list, rsp.list]) {
+        for (let medal of medals) {
+          res.push(medal)
+        }
       }
 
       // 并发获取剩下的页
@@ -433,21 +435,23 @@
           console.error(`获取勋章列表第 ${page} 页失败：`, e)
           continue
         }
-        for (let medal of rsp.items) {
-          res.push(medal)
+        for (let medals of [rsp.special_list, rsp.list]) {
+          for (let medal of medals) {
+            res.push(medal)
+          }
         }
       }
     }
 
     async function getPage(page) {
-      let rsp = (await apiClient.get('/xlive/app-ucenter/v1/user/GetMyMedals', {
+      let rsp = (await apiClient.get('/xlive/app-ucenter/v1/fansMedal/panel', {
         params: {
-          page_size: 10,
+          page_size: 10, // 目前没有发现这个接口有尺寸限制，为了防止以后被背刺，还是一次请求10个
           page: page
         }
       })).data
       if (rsp.code !== 0) {
-        throw rsp.message
+        throw new Error(rsp.message)
       }
       return rsp.data
     }
@@ -459,7 +463,7 @@
   async function getCurMedal() {
     let rsp = (await apiClient.get('/live_user/v1/UserInfo/get_weared_medal')).data
     if (rsp.code !== 0) {
-      throw rsp.message
+      throw new Error(rsp.message)
     }
     let curMedal = rsp.data
     if (curMedal.medal_id === undefined) {
@@ -477,7 +481,7 @@
     data.append('csrf', csrfToken)
     let rsp = (await apiClient.post('/xlive/web-room/v1/fansMedal/wear', data)).data
     if (rsp.code !== 0) {
-      throw rsp.message
+      throw new Error(rsp.message)
     }
     refreshBilibiliCurMedalCache()
   }
@@ -489,7 +493,7 @@
     data.append('csrf', csrfToken)
     let rsp = (await apiClient.post('/xlive/web-room/v1/fansMedal/take_off', data)).data
     if (rsp.code !== 0) {
-      throw rsp.message
+      throw new Error(rsp.message)
     }
     refreshBilibiliCurMedalCache()
   }
