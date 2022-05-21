@@ -7,11 +7,11 @@
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/\d+\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+\??.*/
-// @require      https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js
-// @require      https://cdn.jsdelivr.net/npm/vuex@3.6.2/dist/vuex.js
-// @require      https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js
-// @require      https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/index.js
-// @resource     element-ui-css https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/theme-chalk/index.css
+// @require      https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/vue/2.6.14/vue.js
+// @require      https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/vuex/3.6.2/vuex.js
+// @require      https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/axios/0.26.0/axios.js
+// @require      https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/element-ui/2.15.7/index.js
+// @resource     element-ui-css https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/element-ui/2.15.7/theme-chalk/index.css
 // @grant        GM_getResourceText
 // ==/UserScript==
 
@@ -28,7 +28,7 @@
   function initLib() {
     let css = GM_getResourceText('element-ui-css')
     // 不是通过URL引用的，要修复相对URL
-    css = css.replace(/url\(fonts\//g, 'url(https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/theme-chalk/fonts/')
+    css = css.replace(/url\(fonts\//g, 'url(https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/element-ui/2.15.7/theme-chalk/fonts/')
     let styleElement = unsafeWindow.document.createElement('style')
     styleElement.innerText = css
     unsafeWindow.document.head.appendChild(styleElement)
