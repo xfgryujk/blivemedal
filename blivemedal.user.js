@@ -10,36 +10,28 @@
 // @require      https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js
 // @require      https://cdn.jsdelivr.net/npm/vuex@3.6.2/dist/vuex.js
 // @require      https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js
-// @grant        none
+// @require      https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/index.js
+// @resource     element-ui-css https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/theme-chalk/index.css
+// @grant        GM_getResourceText
 // ==/UserScript==
+
+// grant不能是none，为了和网页的全局变量隔离。直播间网页全局变量有Vue，会导致element-ui出错
 
 (function () {
   async function main() {
-    // 覆盖B站的Vue全局变量，否则element-ui会找错
-    let oldGlobalVue = window.Vue
-    window.Vue = Vue
     initLib()
     initCss()
-    try {
-      await waitForLoaded()
-    } finally {
-      window.Vue = oldGlobalVue
-    }
-
+    await waitForLoaded()
     initUi()
   }
 
   function initLib() {
-    Vue.use(Vuex)
-
-    let linkElement = document.createElement('link')
-    linkElement.rel = 'stylesheet'
-    linkElement.href = 'https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/theme-chalk/index.css'
-    document.head.appendChild(linkElement)
-
-    let scriptElement = document.createElement('script')
-    scriptElement.src = 'https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/index.js'
-    document.head.appendChild(scriptElement)
+    let css = GM_getResourceText('element-ui-css')
+    // 不是通过URL引用的，要修复相对URL
+    css = css.replace(/url\(fonts\//g, 'url(https://cdn.jsdelivr.net/npm/element-ui@2.15.8/lib/theme-chalk/fonts/')
+    let styleElement = unsafeWindow.document.createElement('style')
+    styleElement.innerText = css
+    unsafeWindow.document.head.appendChild(styleElement)
   }
 
   function initCss() {
@@ -54,9 +46,9 @@
         display: none !important;
       }
     `
-    let styleElement = document.createElement('style')
+    let styleElement = unsafeWindow.document.createElement('style')
     styleElement.innerText = css
-    document.head.appendChild(styleElement)
+    unsafeWindow.document.head.appendChild(styleElement)
   }
 
   async function waitForLoaded(timeout = 10 * 1000) {
@@ -68,7 +60,7 @@
           return
         }
         if (new Date() - startTime > timeout) {
-          reject(new Error('[blivemedal] 加载element-ui超时'))
+          reject(new Error(`[blivemedal] 等待加载超时，page=${unsafeWindow.location.href}`))
           return
         }
         setTimeout(poll, 1000)
@@ -78,56 +70,16 @@
   }
 
   function isLoaded() {
-    if (window.ELEMENT === undefined) {
-      return false
-    }
     if (document.querySelector('#control-panel-ctnr-box') === null) {
       return false
     }
     return true
   }
 
-  let store = null
-  function getStore() {
-    if (store === null) {
-      store = new Vuex.Store({
-        state: {
-          config: loadConfig(),
-
-          medals: [],
-          curMedal: null
-        },
-        mutations: {
-          setMedals(state, medals) {
-            state.medals = medals
-          },
-          setCurMedal(state, curMedal) {
-            state.curMedal = curMedal
-          },
-          setConfigItems(state, config) {
-            for (let name in config) {
-              state.config[name] = config[name]
-            }
-            saveConfig(state.config)
-          }
-        },
-        actions: {
-          async updateMedals({ commit }) {
-            commit('setMedals', getMedalsAsync())
-          },
-          async updateCurMedal({ commit }) {
-            commit('setCurMedal', await getCurMedal())
-          }
-        }
-      })
-    }
-    return store
-  }
-
   function loadConfig() {
     let config
     try {
-      config = JSON.parse(window.localStorage.blivemedalConfig || '{}')
+      config = JSON.parse(unsafeWindow.localStorage.blivemedalConfig || '{}')
     } catch {
       config = {}
     }
@@ -145,17 +97,48 @@
   }
 
   function saveConfig(config) {
-    window.localStorage.blivemedalConfig = JSON.stringify(config)
+    unsafeWindow.localStorage.blivemedalConfig = JSON.stringify(config)
   }
 
+  let store = new Vuex.Store({
+    state: {
+      config: loadConfig(),
+
+      medals: [],
+      curMedal: null
+    },
+    mutations: {
+      setMedals(state, medals) {
+        state.medals = medals
+      },
+      setCurMedal(state, curMedal) {
+        state.curMedal = curMedal
+      },
+      setConfigItems(state, config) {
+        for (let name in config) {
+          state.config[name] = config[name]
+        }
+        saveConfig(state.config)
+      }
+    },
+    actions: {
+      async updateMedals({ commit }) {
+        commit('setMedals', getMedalsAsync())
+      },
+      async updateCurMedal({ commit }) {
+        commit('setCurMedal', await getCurMedal())
+      }
+    }
+  })
+
   function initUi() {
-    let panelElement = document.querySelector('#control-panel-ctnr-box')
-    let myMedalButtonElement = document.createElement('div')
+    let panelElement = unsafeWindow.document.querySelector('#control-panel-ctnr-box')
+    let myMedalButtonElement = unsafeWindow.document.createElement('div')
     panelElement.appendChild(myMedalButtonElement)
 
     new Vue({
       el: myMedalButtonElement,
-      store: getStore(),
+      store: store,
       components: {
         MedalDialog
       },
@@ -189,7 +172,7 @@
           }
 
           try {
-            let medalInfo = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.anchor_info.medal_info
+            let medalInfo = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.anchor_info.medal_info
             if (medalInfo !== null) {
               await wearMedal(medalInfo.medal_id)
               return
@@ -309,7 +292,7 @@
       sortedMedals() {
         let curRoomId
         try {
-          curRoomId = window.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info.room_id
+          curRoomId = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info.room_id
         } catch {
           curRoomId = 0
         }
@@ -512,7 +495,7 @@
   }
 
   function getCsrfToken() {
-    let match = document.cookie.match(/\bbili_jct=(.+?)(?:;|$)/)
+    let match = unsafeWindow.document.cookie.match(/\bbili_jct=(.+?)(?:;|$)/)
     if (match === null) {
       return ''
     }
@@ -520,7 +503,7 @@
   }
 
   function refreshBilibiliCurMedalCache() {
-    let originalMedalButton = document.querySelector('.medal-section .fans-medal-item')
+    let originalMedalButton = unsafeWindow.document.querySelector('.medal-section .fans-medal-item')
     if (originalMedalButton === null) {
       return
     }
