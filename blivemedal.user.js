@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.10
+// @version      0.10.1
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
@@ -304,7 +304,7 @@
         for (let medal of this.medals) {
           if (this.curMedal !== null && medal.medal.medal_id === this.curMedal.medal_id) {
             curMedal.push(medal)
-          } else if (medal.room_info.roomid === curRoomId) {
+          } else if (medal.room_info.room_id === curRoomId) {
             curRoomMedal.push(medal)
           } else {
             medals.push(medal)
