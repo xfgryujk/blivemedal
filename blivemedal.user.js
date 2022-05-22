@@ -238,6 +238,7 @@
               <el-link type="primary" :underline="false" target="_blank" :href="'https://live.bilibili.com/' + scope.row.room_info.room_id">
                 {{ scope.row.anchor_info.nick_name }}
               </el-link>
+              <el-badge v-if="scope.row.room_info.living_status" is-dot></el-badge>
             </template>
           </el-table-column>
           <el-table-column label="亲密度/原力值" prop="medal.intimacy" width="140" sortable>
@@ -389,6 +390,7 @@
 
   function getMedalsAsync() {
     let res = []
+    let addedMedalIds = new Set()
 
     async function doGetMedalsAsync() {
       // 获取第一页和总页数
@@ -399,11 +401,7 @@
         console.error('获取勋章列表第 1 页失败：', e)
         return
       }
-      for (let medals of [rsp.special_list, rsp.list]) {
-        for (let medal of medals) {
-          res.push(medal)
-        }
-      }
+      pushResFromRsp(rsp)
 
       // 并发获取剩下的页
       if (rsp.page_info.total_page <= 1) {
@@ -435,10 +433,18 @@
           console.error(`获取勋章列表第 ${page} 页失败：`, e)
           continue
         }
-        for (let medals of [rsp.special_list, rsp.list]) {
-          for (let medal of medals) {
-            res.push(medal)
+        pushResFromRsp(rsp)
+      }
+    }
+
+    function pushResFromRsp(rsp) {
+      for (let medals of [rsp.special_list, rsp.list]) {
+        for (let medal of medals) {
+          if (addedMedalIds.has(medal.medal.medal_id)) {
+            continue
           }
+          addedMedalIds.add(medal.medal.medal_id)
+          res.push(medal)
         }
       }
     }
