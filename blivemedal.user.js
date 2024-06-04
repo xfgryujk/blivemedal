@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.10.1
+// @version      0.10.2
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
@@ -293,7 +293,7 @@
       sortedMedals() {
         let curRoomId
         try {
-          curRoomId = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info.room_id
+          curRoomId = unsafeWindow.BilibiliLive.ROOMID
         } catch {
           curRoomId = 0
         }
@@ -469,7 +469,9 @@
   async function getCurMedal() {
     let csrfToken = getCsrfToken()
     let data = new FormData()
-    data.append('source',1)
+    data.append('source', 1)
+    data.append('uid', unsafeWindow.BilibiliLive.UID)
+    data.append('target_id', unsafeWindow.BilibiliLive.ANCHOR_UID)
     data.append('csrf_token', csrfToken)
     data.append('csrf', csrfToken)
     let rsp = (await apiClient.post('/live_user/v1/UserInfo/get_weared_medal', data)).data
