@@ -467,7 +467,12 @@
   }
 
   async function getCurMedal() {
-    let rsp = (await apiClient.get('/live_user/v1/UserInfo/get_weared_medal')).data
+    let csrfToken = getCsrfToken()
+    let data = new FormData()
+    data.append('source',1)
+    data.append('csrf_token', csrfToken)
+    data.append('csrf', csrfToken)
+    let rsp = (await apiClient.post('/live_user/v1/UserInfo/get_weared_medal', data)).data
     if (rsp.code !== 0) {
       throw new Error(rsp.message)
     }
