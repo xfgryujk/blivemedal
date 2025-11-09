@@ -1,17 +1,17 @@
 // ==UserScript==
 // @name         blivemedal
 // @namespace    http://tampermonkey.net/
-// @version      0.10.2
+// @version      0.10.3
 // @description  拯救B站直播换牌子的用户体验
 // @author       xfgryujk
 // @include      /https?:\/\/live\.bilibili\.com\/?\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/\d+\??.*/
 // @include      /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+\??.*/
-// @require      https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/vue/2.6.14/vue.js
-// @require      https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/vuex/3.6.2/vuex.js
-// @require      https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/axios/0.26.0/axios.js
-// @require      https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/element-ui/2.15.7/index.js
-// @resource     element-ui-css https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/element-ui/2.15.7/theme-chalk/index.css
+// @require      https://s4.zstatic.net/ajax/libs/vue/2.6.14/vue.js
+// @require      https://s4.zstatic.net/ajax/libs/vuex/3.6.2/vuex.js
+// @require      https://s4.zstatic.net/ajax/libs/axios/0.26.0/axios.js
+// @require      https://s4.zstatic.net/ajax/libs/element-ui/2.15.7/index.js
+// @resource     element-ui-css https://s4.zstatic.net/ajax/libs/element-ui/2.15.7/theme-chalk/index.css
 // @grant        GM_getResourceText
 // ==/UserScript==
 
@@ -28,7 +28,7 @@
   function initLib() {
     let css = GM_getResourceText('element-ui-css')
     // 不是通过URL引用的，要修复相对URL
-    css = css.replace(/url\(fonts\//g, 'url(https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/element-ui/2.15.7/theme-chalk/fonts/')
+    css = css.replace(/url\(fonts\//g, 'url(https://s4.zstatic.net/ajax/libs/element-ui/2.15.7/theme-chalk/fonts/')
     let styleElement = unsafeWindow.document.createElement('style')
     styleElement.innerText = css
     unsafeWindow.document.head.appendChild(styleElement)
